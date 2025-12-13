@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IntelliWaste – City Heatmap Prototype</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- Our styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header>
+    IntelliWaste – <span>City Heatmap Prototype</span>
+  </header>
+
+  <div id="container">
+    <!-- LEFT: MAP -->
+    <div id="map"></div>
+
+    <!-- RIGHT: PANEL -->
+    <div id="panel">
+      <h2>Layer: <span id="layerTitle">Overflow Risk (24h)</span></h2>
+
+      <button class="btn active" onclick="setLayer('overflow')">Overflow</button>
+      <button class="btn" onclick="setLayer('contamination')">Contamination</button>
+      <button class="btn" onclick="setLayer('density')">Material Density</button>
+
+      <!-- Optional legend inside the panel -->
+      <div class="legend-inline">
+        <div><span class="legend-box low"></span>Low</div>
+        <div><span class="legend-box med"></span>Medium</div>
+        <div><span class="legend-box high"></span>High</div>
+      </div>
+
+      <h3 style="margin-top: 12px">Sample Data</h3>
+      <div id="infoBox"></div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Our script -->
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+/* Global page style */
+body {
+  background: radial-gradient(circle at top, #12141f 0, #050509 60%);
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: #f9fafb;
+}
+
+header {
+  padding: 18px 24px;
+  background: #050509;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+
+header span {
+  color: #d7ff00;
+}
+
+/* Layout: map + side panel */
+#container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  height: calc(100vh - 69px);
+}
+
+/* Map area */
+#map {
+  height: 100%;
+  width: 100%;
+  border-right: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* Leaflet container look */
+.leaflet-container {
+  background: #050509;
+  filter: saturate(1.2) contrast(1.05);
+}
+
+/* Right panel */
+#panel {
+  padding: 20px;
+  background: radial-gradient(circle at top, #151724 0, #050509 70%);
+  border-left: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+h2 {
+  margin-top: 0;
+}
+
+/* Layer buttons */
+.btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #d7ff00;
+  color: #d7ff00;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 13px;
+  transition: all 0.15s ease-out;
+}
+
+.btn:hover {
+  background: rgba(215, 255, 0, 0.16);
+}
+
+.btn.active {
+  background: #d7ff00;
+  color: #000;
+}
+
+/* Inline legend in panel */
+.legend-inline {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 12px;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.legend-inline div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.legend-box.low {
+  background: #4ade80;
+}
+
+.legend-box.med {
+  background: #facc15;
+}
+
+.legend-box.high {
+  background: #fb7185;
+}
+
+/* Info cards */
+.dot-info {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #e5e7eb;
+  padding: 8px 10px;
+  background: radial-gradient(
+      circle at top left,
+      rgba(215, 255, 0, 0.12),
+      rgba(15, 23, 42, 0.9)
+    );
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
+
+/* Responsive: small screens */
+@media (max-width: 900px) {
+  #container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  #map {
+    height: 50vh;
+  }
+}

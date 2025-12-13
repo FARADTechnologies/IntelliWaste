@@ -1,0 +1,33 @@
+{
+  "frame_source": "frame_at_3s.jpg",
+  "timestamp_sec": 3.0,
+  "detections": [
+    {
+      "label": "green metal dumpster on wheels",
+      "score": 0.429663747549057,
+      "box": {
+        "xmin": 418,
+        "ymin": 192,
+        "xmax": 875,
+        "ymax": 670
+      }
+    },
+    {
+      "label": "black plastic trash bag",
+      "score": 0.0,
+      "box": {
+        "xmin": 413,
+        "ymin": 217,
+        "xmax": 912,
+        "ymax": 656
+      }
+    }
+  ],
+  "fill": {
+    "fill_ratio": 0.8723,
+    "fill_percent": 87.23,
+    "fill_level": "HIGH",
+    "container_area_px": 161589,
+    "trash_area_px": 140956
+  }
+}
