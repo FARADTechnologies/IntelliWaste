@@ -1,0 +1,12 @@
+.venv_sam3/
+Segmentation/.venv_sam3/
+.venv/
+venv/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+Thumbs.db
+/*.log

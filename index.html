@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="bins-config.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliWaste | AI Command V3</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --border: rgba(148, 163, 184, 0.2);
+      --accent: #38bdf8;
+      /* Cyan */
+      --purple: #a855f7;
+      /* Route Color */
+      --danger: #ef4444;
+      --warning: #eab308;
+      --success: #22c55e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- HEADER --- */
+    header {
+      height: 60px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1000;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .top-stats {
+      display: flex;
+      gap: 30px;
+    }
+
+    .stat-item span {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      display: block;
+    }
+
+    .stat-item strong {
+      font-size: 16px;
+      color: var(--accent);
+    }
+
+    /* --- LAYOUT --- */
+    .main-container {
+      display: flex;
+      flex: 1;
+      position: relative;
+      height: calc(100vh - 60px);
+    }
+
+    /* --- LEFT SIDEBAR (CONTROLS) --- */
+    .sidebar-left {
+      width: 320px;
+      background: var(--bg-dark);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      z-index: 900;
+      overflow-y: auto;
+    }
+
+    .control-group h3 {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+    }
+
+    /* Inputs & Buttons */
+    .btn-toggle,
+    .action-btn {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: 0.2s;
+      margin-bottom: 10px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .btn-toggle:hover,
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    .btn-toggle.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .action-btn.primary {
+      background: var(--purple);
+      color: white;
+      border: none;
+      justify-content: center;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+    }
+
+    .action-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .slider-container {
+      margin-bottom: 15px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    /* --- MAP --- */
+    #map {
+      flex: 1;
+      background: #111;
+    }
+
+    /* --- RIGHT SIDEBAR (DETAILS & REPORTS) --- */
+    .sidebar-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 360px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      transform: translateX(100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-right.open {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .close-btn:hover {
+      color: white;
+    }
+
+    .panel-content {
+      padding: 20px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* Bin Detail Styles */
+    .bin-img-placeholder {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .bin-img-placeholder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.8;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .detail-val {
+      font-weight: 600;
+      color: white;
+      font-size: 13px;
+    }
+
+    .progress-bg {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    /* Report Styles */
+    .report-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .kpi-big {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .saved-tag {
+      font-size: 12px;
+      color: var(--success);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      background: rgba(34, 197, 94, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* --- MARKERS (V1 Style) --- */
+    .custom-marker {
+      background: rgba(15, 23, 42, 0.9) !important;
+      /* İç kısmın koyu kalması için */
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    /* Temiz kutular - Yeşil border */
+    .marker-clean {
+      border: 2px solid var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    /* Uyarı veren kutular - Sarı border */
+    .marker-warn {
+      border: 2px solid var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+    }
+
+    /* Kritik/Dolu kutular - Kırmızı border ve Hızlı Pulse */
+    .marker-full {
+      border: 2px solid var(--danger);
+      box-shadow: 0 0 15px var(--danger);
+      animation: pulse-v1 1.5s infinite;
+    }
+
+    /* Depo görseli */
+    .marker-depot {
+      background: var(--purple) !important;
+      color: white;
+      display: flex !important;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      border: 2px solid white;
+      box-shadow: 0 0 15px var(--purple);
+    }
+
+    #aiFrame {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 10000;
+      background: #0f172a;
+
+      /* Smooth Geçiş Ayarları */
+      opacity: 0;
+      pointer-events: none;
+      /* Gizliyken tıklamaları engeller */
+      transform: translateY(20px);
+      /* Hafif aşağıdan başlar */
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      /* Apple tarzı yumuşak geçiş */
+    }
+
+    #aiFrame.show {
+      opacity: 1;
+      pointer-events: auto;
+      /* Aktifken tıklanabilir olur */
+      transform: translateY(0);
+      /* Kendi yerine oturur */
+    }
+
+    /* V1 Pulse Animasyonu */
+    @keyframes pulse-v1 {
+      0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+
+      70% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
+
+    /* Loader */
+    .loader {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <i class="fa-solid fa-recycle" style="color:var(--success)"></i> IntelliWaste
+    </div>
+    <div class="top-stats">
+      <div class="stat-item"><span>Status</span><strong style="color:var(--success)">Online</strong></div>
+      <div class="stat-item"><span>Total Bins</span><strong id="header-total">0</strong></div>
+      <div class="stat-item"><span>Time</span><strong id="clock">12:00</strong></div>
+      <div class="stat-item">
+        <span>Active Bins</span>
+        <strong id="header-active">0</strong>
+      </div>
+      <!-- <div class="stat-item">
+                <span>Avg Efficiency</span>
+                <strong style="color:var(--success)">94%</strong>
+            </div> -->
+      <div class="stat-item">
+        <span>Alerts</span>
+        <strong style="color:var(--danger)">12</strong>
+      </div>
+      <!-- <div class="stat-item">
+                <span>Date</span>
+                <strong id="clock">12:00</strong> -->
+    </div>
+  </header>
+  <!-- 
+    <header>
+        <div class="brand">
+            <i class="fa-solid fa-recycle"></i>
+            IntelliWaste <span style="color:var(--text-muted); font-weight:300; margin-left:8px;">Command Center</span>
+        </div>
+        <div class="top-stats">
+            <div class="stat-item">
+                <span>Active Bins</span>
+                <strong>1,248</strong>
+            </div>
+            <div class="stat-item">
+                <span>Avg Efficiency</span>
+                <strong style="color:var(--success)">94%</strong>
+            </div>
+            <div class="stat-item">
+                <span>Alerts</span>
+                <strong style="color:var(--danger)">12</strong>
+            </div>
+            <div class="stat-item">
+                <span>Date</span>
+                <strong id="clock">12:00</strong>
+            </div>
+        </div>
+    </header> -->
+
+  <div class="main-container">
+    <div class="sidebar-left">
+      <div class="control-group">
+        <h3><i class="fa-solid fa-eye"></i> Monitoring</h3>
+        <div class="slider-container">
+          <div class="slider-header"><span>Min Fill Level</span><span id="lbl-filter"
+              style="color:var(--accent)">0%</span></div>
+          <input type="range" id="slider-filter" min="0" max="100" value="0">
+        </div>
+        <button class="btn-toggle" id="btn-contam" onclick="toggleContam()">
+          <i class="fa-solid fa-triangle-exclamation"></i> Show Contaminated Only
+        </button>
+        <button class="btn-toggle" onclick="openAI()">
+          <i class="fa-solid fa-braille"></i> SAM3 Segmentation
+        </button>
+      </div>
+
+      <div class="control-group">
+        <h3><i class="fa-solid fa-route"></i> Smart Routing</h3>
+        <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px; line-height:1.4;">
+          AI plans the most efficient path using <b>Real Road Networks</b> based on fill threshold.
+        </p>
+        <div class="slider-container">
+          <div class="slider-header"><span>Collection Threshold</span><span id="lbl-route"
+              style="color:var(--purple)">70%</span></div>
+          <input type="range" id="slider-route" min="0" max="100" value="70" style="accent-color:var(--purple)">
+        </div>
+        <button class="action-btn primary" onclick="generateSmartRoute()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Real Route
+        </button>
+        <button class="action-btn" onclick="clearRoute()">
+          <i class="fa-solid fa-xmark"></i> Clear Map
+        </button>
+        <button class="action-btn" onclick="clearRoute2()">
+          <i class="fa-solid fa-trash-can"></i> Reset View
+        </button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+    <div id="loader" class="loader"><i class="fa-solid fa-circle-notch fa-spin"></i> Calculating Roads...</div>
+
+    <div class="sidebar-right" id="rightPanel">
+      <div class="panel-header">
+        <span class="panel-title" id="panelTitle">Details</span>
+        <button class="close-btn" onclick="closePanel()"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div class="panel-content" id="panelContent">
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // --- CONFIG & UTILS ---
+    // İstanbul Maslak/Levent
+const CENTER = [41.092, 29.005];    // Truck Specs
+    const TRUCK_FUEL_PER_100KM = 35; // Liters (Heavy traffic/stop-start)
+    const CO2_PER_LITER = 2.68; // Kg CO2 per Liter Diesel
+
+    // Clock
+    setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }), 1000);
+
+    // --- MAP INIT ---
+    const map = L.map('map', { zoomControl: false }).setView(CENTER, 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Layers
+    const binLayer = L.layerGroup().addTo(map);
+    const routeLayer = L.layerGroup().addTo(map);
+
+    // Data
+    const bins = [];
+    const NUM_BINS = 80;
+    const NUM_ACTIVEBINS = 78;
+
+    // Generate Random Data
+    for (let i = 0; i < NUM_BINS; i++) {
+      bins.push({
+        id: `BIN-${1000 + i}`,
+        lat: CENTER[0] + (Math.random() - 0.5) * 0.04,
+        lng: CENTER[1] + (Math.random() - 0.5) * 0.06,
+        fill: Math.floor(Math.random() * 100),
+        battery: Math.floor(60 + Math.random() * 40),
+        contaminated: Math.random() > 0.9,
+        lastColl: Math.floor(Math.random() * 24) + "h ago",
+        visible: true,
+        image: BinAssets.getRandomImage()
+      });
+    }
+    document.getElementById('header-total').innerText = NUM_BINS;
+    document.getElementById('header-active').innerText = NUM_ACTIVEBINS;
+
+    // --- RENDERING MARKERS ---
+    function renderBins() {
+      binLayer.clearLayers();
+      const minFill = parseInt(document.getElementById('slider-filter').value);
+      const showContam = document.getElementById('btn-contam').classList.contains('active');
+
+      bins.forEach(bin => {
+        let isVisible = true;
+        if (bin.fill < minFill) isVisible = false;
+        if (showContam && !bin.contaminated) isVisible = false;
+
+        bin.visible = isVisible;
+
+        if (isVisible) {
+          let cssClass = 'marker-clean';
+          if (bin.contaminated) cssClass = 'marker-full'; // Red flash
+          else if (bin.fill > 80) cssClass = 'marker-full';
+          else if (bin.fill > 50) cssClass = 'marker-warn';
+
+          const marker = L.marker([bin.lat, bin.lng], {
+            icon: L.divIcon({ className: `custom-marker ${cssClass}`, iconSize: [12, 12] })
+          });
+
+          // CLICK EVENT: Open Side Panel
+          marker.on('click', () => openBinDetail(bin));
+          marker.addTo(binLayer);
+        }
+      });
+    }
+
+    // --- SIDE PANEL LOGIC ---
+    const rightPanel = document.getElementById('rightPanel');
+    const panelTitle = document.getElementById('panelTitle');
+    const panelContent = document.getElementById('panelContent');
+
+    function openBinDetail(bin) {
+      panelTitle.innerText = `${bin.id} Details`;
+      let statusColor = bin.contaminated ? '#ef4444' : (bin.fill > 80 ? '#ef4444' : '#22c55e');
+      let statusText = bin.contaminated ? 'CONTAMINATED' : (bin.fill > 80 ? 'CRITICAL' : 'NORMAL');
+
+panelContent.innerHTML = `
+    <div class="bin-img-placeholder" style="margin-bottom: 20px;">
+         <img src="${bin.image}" alt="Source Feed" style="width: 100%; border-radius: 8px;">
+    </div>
+    
+    <div class="detail-row">
+        <span class="detail-label">Status</span>
+        <span class="detail-val" style="color:${statusColor}">${statusText}</span>
+    </div>
+    
+    <div style="margin-bottom:15px;">
+        <div class="detail-row" style="margin-bottom:5px; border:none;">
+            <span class="detail-label">Fill Level</span>
+            <span class="detail-val">${bin.fill}%</span>
+        </div>
+        <div class="progress-bg">
+            <div class="progress-fill" style="width:${bin.fill}%; background:${statusColor}"></div>
+        </div>
+    </div>
+
+    <div class="detail-row">
+        <span class="detail-label">Contamination</span>
+        <span class="detail-val">${bin.contaminated ? 'Yes (Plastic/Organic mix)' : 'None'}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Battery</span>
+        <span class="detail-val">${bin.battery}%</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Last Collection</span>
+        <span class="detail-val">${bin.lastColl}</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="action-btn primary" style="flex: 1;" 
+                onclick="BinAssets.initViewAICam('${bin.id}', '${bin.image}')">
+            <i class="fa-solid fa-eye"></i> View AI Cam
+        </button>
+        <button class="action-btn" style="flex: 1;">
+            <i class="fa-solid fa-truck"></i> Dispatch
+        </button>
+    </div>
+`;
+      rightPanel.classList.add('open');
+    }
+
+    function startInference() {
+    // ... mevcut kodların ...
+    
+    // Tablodaki verileri rastgele salla (Gerçekçi bir hava katar)
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const randomMass = (Math.random() * 40 + 10).toFixed(1) + "%";
+        row.children[1].innerText = randomMass;
+    });
+}
+
+function openMissionReport(stats) {
+    panelTitle.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Mission Report';
+
+    // --- REALISTIC USD LOGISTICS CONSTANTS ---
+    const FUEL_UNIT_PRICE = 1.65;    // $ per Liter
+    const WEAR_TEAR_KM = 0.2;       // $ per KM (Maintenance, Tires, Depreciation)
+    const LABOR_COST_KM = 0.00001;      // $ per KM (Driver salary & insurance per distance)
+    // Toplam KM Başına İşletme Maliyeti (Yakıt hariç): $1.45
+
+    // 1. MEVCUT (OPTIMIZED) COST
+    const currentFuelCost = stats.fuel * FUEL_UNIT_PRICE;
+    const currentOpCost = stats.dist * (WEAR_TEAR_KM + LABOR_COST_KM);
+    const totalCurrentCost = currentFuelCost + currentOpCost;
+
+    // 2. NORMAL (NON-OPTIMIZED) COST
+    const baselineDist = stats.dist + stats.savedDist;
+    const baselineFuel = stats.fuel + stats.savedFuel;
+    const totalNormalCost = (baselineFuel * FUEL_UNIT_PRICE) + (baselineDist * (WEAR_TEAR_KM + LABOR_COST_KM));
+
+    // 3. SAVINGS CALCULATION
+    const totalSavedUSD = totalNormalCost - totalCurrentCost;
+    const savingPercentage = ((totalSavedUSD / totalNormalCost) * 100).toFixed(1);
+
+    // Formatter
+    const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+    panelContent.innerHTML = `
+        <p style="color:var(--text-muted); font-size:11px; margin-bottom:15px; text-transform:uppercase; letter-spacing:1px;">
+            <i class="fa-solid fa-shield-halved"></i> Audit Grade: Standard Logistic Assessment
+        </p>
+
+        <div class="report-card" style="background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(15,23,42,0) 100%); border-left: 4px solid var(--success);">
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+                <div>
+                    <div class="kpi-sub" style="color:var(--success)">Total Mission Savings</div>
+                    <div class="kpi-big" style="font-size:32px;">${usd.format(totalSavedUSD)}</div>
+                </div>
+                <div style="background:var(--success); color:black; padding:4px 8px; border-radius:4px; font-weight:700; font-size:14px;">
+                    -${savingPercentage}%
+                </div>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:var(--text-muted);">
+                Efficiency Gain vs Traditional Routing
+            </div>
+        </div>
+
+        <div class="report-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px;">
+                <span style="color:var(--text-muted)">Standard Route Cost:</span>
+                <span style="text-decoration: line-through; opacity:0.6;">${usd.format(totalNormalCost)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-weight:600; font-size:13px;">
+                <span>AI Optimized Cost:</span>
+                <span style="color:var(--accent)">${usd.format(totalCurrentCost)}</span>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <div class="kpi-sub">Total Distance</div>
+            <div class="kpi-big" style="color:var(--purple)">${stats.dist.toFixed(1)} <span style="font-size:14px">km</span></div>
+            ${stats.savedDist > 0 ? `<div class="saved-tag"><i class="fa-solid fa-arrow-down"></i> ${stats.savedDist.toFixed(1)} km saved</div>` : ''}
+        </div>
+
+        <div class="report-card">
+            <div class="kpi-sub">Fuel Consumption</div>
+            <div class="kpi-big">${stats.fuel.toFixed(1)} <span style="font-size:14px">L</span></div>
+            ${stats.savedFuel > 0 ? `<div class="saved-tag"><i class="fa-solid fa-gas-pump"></i> ${stats.savedFuel.toFixed(1)} L saved</div>` : ''}
+        </div>
+
+<div class="report-card">
+    <div class="kpi-sub">CO2 Emissions</div>
+    <div class="kpi-big" style="color:${stats.savedCo2 > 0 ? 'var(--success)' : 'white'}">
+        ${stats.co2.toFixed(1)} <span style="font-size:14px">kg</span>
+    </div>
+    ${stats.savedCo2 > 0 ? `<div class="saved-tag"><i class="fa-solid fa-leaf"></i> ${stats.savedCo2.toFixed(1)} kg saved</div>` : ''}
+</div>
+
+        <div class="report-card">
+            <div class="kpi-sub">Optimized Stops</div>
+            <div class="kpi-big">${stats.stops} <span style="font-size:14px">/ ${NUM_BINS} Bins</span></div>
+        </div>
+    `;
+    rightPanel.classList.add('open');
+}
+    function openAI(binId, binImg) {
+      const frame = document.getElementById('aiFrame');
+      if (frame) {
+        frame.classList.add('show');
+        // Iframe'e veriyi postMessage ile gönderiyoruz
+        setTimeout(() => {
+          frame.contentWindow.postMessage({
+            type: 'updateData',
+            id: binId,
+            img: binImg
+          }, '*');
+        }, 150); // Frame'in yüklenmesi için kısa bir bekleme
+      }
+    }
+
+
+    function closeAI() {
+      const frame = document.getElementById('aiFrame');
+      frame.classList.remove('show');
+    }
+
+    window.addEventListener('message', (event) => {
+      const frame = document.getElementById('aiFrame');
+      if (event.data && event.data.type === 'closeAI' && frame && event.source === frame.contentWindow) {
+        closeAI();
+      }
+    });
+
+    function closePanel() { rightPanel.classList.remove('open'); }
+
+    // --- ROUTING LOGIC (OSRM) ---
+
+    async function generateSmartRoute() {
+      closePanel();
+      routeLayer.clearLayers();
+      document.getElementById('loader').style.display = 'block';
+
+      // 1. Filter Bins
+      const threshold = parseInt(document.getElementById('slider-route').value);
+      const targets = bins.filter(b => b.fill >= threshold && b.visible);
+
+      if (targets.length === 0) {
+        alert("No bins match the criteria.");
+        document.getElementById('loader').style.display = 'none';
+        return;
+      }
+
+      // 2. Depot Setup
+      const depot = { lat: CENTER[0] + 0.02, lng: CENTER[1] - 0.02 };
+      L.marker([depot.lat, depot.lng], {
+        icon: L.divIcon({ className: 'custom-marker marker-depot', iconSize: [30, 30], html: '<i class="fa-solid fa-warehouse"></i>' })
+      }).addTo(routeLayer);
+
+      // 3. Sort Points (Nearest Neighbor for optimized order)
+      let unvisited = [...targets];
+      let orderedPoints = [depot];
+      let current = depot;
+
+      while (unvisited.length > 0) {
+        let nearestIdx = 0;
+        let minD = Infinity;
+        unvisited.forEach((u, i) => {
+          const d = Math.sqrt(Math.pow(u.lat - current.lat, 2) + Math.pow(u.lng - current.lng, 2));
+          if (d < minD) { minD = d; nearestIdx = i; }
+        });
+        current = unvisited[nearestIdx];
+        orderedPoints.push(current);
+        unvisited.splice(nearestIdx, 1);
+      }
+      orderedPoints.push(depot); // Return home
+
+      // 4. PREPARE OSRM API (Real Roads)
+      // Note: OSRM demo server has limits. We split into chunks or just use simplified polyline if too long.
+      // For this demo, we construct the URL.
+      const coordinates = orderedPoints.map(p => `${p.lng},${p.lat}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.code !== 'Ok') throw new Error("Routing Failed");
+
+        const routeGeoJSON = data.routes[0].geometry;
+        const distanceMeters = data.routes[0].distance;
+        const distanceKm = distanceMeters / 1000;
+
+        // DRAW REAL ROAD LINE
+        L.geoJSON(routeGeoJSON, {
+          style: { color: '#a855f7', weight: 5, opacity: 0.8, lineCap: 'round', dashArray: '10, 10' }
+        }).addTo(routeLayer);
+
+        // --- CALCULATION & SAVINGS LOGIC ---
+
+        // Baseline: Estimate distance if we visited ALL bins (approx 1.3x crow fly sum of all bins)
+        // Since we can't route 80 points easily on free API, we estimate baseline mathematically for realism.
+        // Logic: Distance is roughly proportional to SQRT of number of stops in same area.
+        // Or simpler: Baseline = CurrentDist * (TotalBins / VisitedBins) * EfficiencyFactor
+
+        // Let's use a smarter estimate: 
+        // If we visit 100% of bins, distance is roughly X.
+        // We use the current real distance and extrapolate what "0% threshold" would have been.
+
+        // Realistic Baseline Estimate (if we visited everyone):
+        // It's the current distance + (average distance between bins * skipped bins)
+        // This is a heuristic for the demo.
+        const skippedBins = NUM_BINS - targets.length;
+        const avgDistBetweenBins = 0.8; // km (estimated in city)
+        const baselineKm = distanceKm + (skippedBins * avgDistBetweenBins);
+
+        // If threshold is 0, baseline should equal distance (approx)
+        const finalBaseline = threshold === 0 ? distanceKm : baselineKm;
+
+        const stats = {
+          dist: distanceKm,
+          fuel: (distanceKm * (TRUCK_FUEL_PER_100KM / 100)),
+          co2: (distanceKm * (TRUCK_FUEL_PER_100KM / 100) * CO2_PER_LITER),
+          stops: targets.length,
+          // Savings
+          savedDist: finalBaseline - distanceKm,
+          savedFuel: ((finalBaseline - distanceKm) * (TRUCK_FUEL_PER_100KM / 100)),
+          savedCo2: ((finalBaseline - distanceKm) * (TRUCK_FUEL_PER_100KM / 100) * CO2_PER_LITER)
+        };
+
+        openMissionReport(stats);
+
+      } catch (err) {
+        console.error(err);
+        alert("Routing service busy (Demo API). Try reducing points.");
+      } finally {
+        document.getElementById('loader').style.display = 'none';
+      }
+    }
+
+    function clearRoute() {
+      routeLayer.clearLayers();
+      closePanel();
+    }
+    function clearRoute2() { closePanel(); map.flyTo(CENTER, 14); }
+
+
+    // --- UI BINDINGS ---
+    // Filters
+    const sliderFilter = document.getElementById('slider-filter');
+    sliderFilter.addEventListener('input', (e) => {
+      document.getElementById('lbl-filter').innerText = e.target.value + '%';
+      renderBins();
+    });
+
+    function toggleContam() {
+      document.getElementById('btn-contam').classList.toggle('active');
+      renderBins();
+    }
+
+    // Route Slider
+    const sliderRoute = document.getElementById('slider-route');
+    sliderRoute.addEventListener('input', (e) => {
+      document.getElementById('lbl-route').innerText = e.target.value + '%';
+    });
+
+    // Init
+    renderBins();
+
+  </script>
+  <iframe id="aiFrame" src="ai-vision.html"></iframe>
+</body>
+
+</html>

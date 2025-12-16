@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            --bg: #020617;
+            --border: rgba(255, 255, 255, 0.08);
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: var(--bg);
+            color: white;
+            font-family: 'Inter', -apple-system, sans-serif;
+            letter-spacing: -0.01em;
+            overflow: hidden;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        .system-status {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr;
+            gap: 24px;
+            height: calc(100vh - 120px);
+        }
+
+        /* Viewport Ayarları */
+        .vision-viewport {
+            position: relative;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        #binStaticImg, #samVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .overlay-id {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            color: var(--accent);
+            z-index: 10;
+        }
+
+        .production-note {
+            position: absolute;
+            bottom: 15px;
+            left: 20px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: monospace;
+            z-index: 10;
+        }
+
+        /* Veri Paneli */
+        .data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .data-card {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        .data-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .data-value {
+            font-size: 24px;
+            font-weight: 600;
+            font-family: 'Inter';
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        /* Butonlar */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-load {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-load:hover {
+            background: var(--accent);
+            color: black;
+        }
+
+        .btn-exit:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-bar">
+        <div class="system-status">
+            <div class="status-dot"></div>
+            NEURAL ANALYSIS INTERFACE • <span id="bin-id-display" style="color: white;">ID: NULL</span>
+        </div>
+        <div class="btn-group">
+            <button class="action-btn btn-load" id="loadInferenceBtn" onclick="startInference()">
+                <i class="fa-solid fa-microchip"></i> LOAD INFERENCE
+            </button>
+            <button class="action-btn btn-exit" onclick="requestClose()">
+                <i class="fa-solid fa-xmark"></i> CLOSE
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="vision-viewport">
+            <div class="overlay-id" id="modeTag">MODE: STATIC_SOURCE</div>
+            
+            <img id="binStaticImg" src="">
+            
+            <video id="samVideo" muted loop playsinline style="display: none;">
+                <source src="sam3-output.webm" type="video/webm">
+            </video>
+
+            <div class="production-note" id="techNote">
+                * NODE: SIMULATION_STILL | SOURCE: PERSISTENT_STORAGE
+            </div>
+        </div>
+
+        <div class="data-grid">
+            <div class="data-card">
+                <span class="data-label">Analysis Metadata</span>
+                <div class="data-value" id="confValue">Confidence: ---</div>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                    Model: SAM-3.0 Large<br>
+                    Hardware: GPU Acceleration Active
+                </p>
+            </div>
+
+            <div class="data-card">
+                <span class="data-label">Material Quantification</span>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Mass Est.</th>
+                            <th>Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Polymer (Plastic)</td><td>42.4%</td><td>0.34m³</td></tr>
+                        <tr><td>Cellulose (Paper)</td><td>18.1%</td><td>0.12m³</td></tr>
+                        <tr><td>Organic Waste</td><td>39.5%</td><td>0.28m³</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="data-card" style="flex-grow: 1;">
+                <span class="data-label">System Diagnostics</span>
+                <div style="font-family: monospace; font-size: 11px; color: #22c55e;">
+                    > Connection Established<br>
+                    > Stream encrypted (AES-256)<br>
+                    > Neural Engine: Ready
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('samVideo');
+        const img = document.getElementById('binStaticImg');
+        const loadBtn = document.getElementById('loadInferenceBtn');
+        const modeTag = document.getElementById('modeTag');
+        const techNote = document.getElementById('techNote');
+        const confValue = document.getElementById('confValue');
+
+        function startInference() {
+            // Resimden Videoya Geçiş
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.play();
+
+            // UI Güncelleme
+            loadBtn.style.display = 'none';
+            modeTag.innerText = "MODE: LIVE_SEGMENTATION";
+            modeTag.style.color = "#22c55e";
+            confValue.innerText = "Confidence: 0.982";
+            techNote.innerHTML = "* NODE: LIVE_STREAM | LATENCY: 14ms | SOURCE: CAM_A1_DUMPSTER";
+        }
+
+        function requestClose() {
+            if (video) {
+                video.pause();
+                video.currentTime = 0;
+            }
+            window.parent.postMessage({ type: 'closeAI' }, '*');
+        }
+
+        // Ana sayfadan (index.html) gelen veriyi yakala
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'updateData') {
+                // 1. ID'yi güncelle
+                document.getElementById('bin-id-display').innerText = `ID: ${event.data.id}`;
+                
+                // 2. RESİM DÜZELTME (Doğru ID'yi hedefliyoruz)
+                // Yukarıda tanımladığın 'img' değişkenini (binStaticImg) kullanıyoruz
+                if (img) {
+                    img.src = event.data.img; 
+                    img.style.display = 'block';
+                }
+                
+                // 3. Sıfırlamalar
+                if (video) {
+                    video.style.display = 'none';
+                    video.pause();
+                }
+                
+                loadBtn.style.display = 'flex';
+                modeTag.innerText = "MODE: STATIC_SOURCE";
+                modeTag.style.color = "var(--accent)"; // Rengi maviye geri döndür
+                confValue.innerText = "Confidence: ---";
+                techNote.innerHTML = "* NODE: SIMULATION_STILL | SOURCE: PERSISTENT_STORAGE";
+            }
+        });
+    </script>
+</body>
+</html>
