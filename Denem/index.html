@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliWaste | AI Command Center Final</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0b0c10;
+            --panel-bg: rgba(17, 19, 26, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #d6ff00; /* V1'in Neon Sarısı */
+            --purple: #a855f7; 
+            --danger: #ff3b3b; 
+            --warning: #ffb800;
+            --success: #21f39b;
+            --text-main: #e9edf5;
+            --text-muted: #a9b1c3;
+        }
+
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-main); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        /* --- HEADER (V1 Tarzı Şık Kutucuklar) --- */
+        header {
+            height: 70px; background: rgba(11, 12, 16, 0.95); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 1000;
+        }
+        .brand { font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-main); }
+        .brand i { color: var(--accent); }
+
+        .top-stats { display: flex; gap: 12px; }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 14px; min-width: 120px; transition: 0.3s;
+        }
+        .stat-item:hover { border-color: var(--accent); background: rgba(214, 255, 0, 0.05); }
+        .stat-item span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+        .stat-item strong { font-size: 17px; font-family: 'JetBrains Mono', monospace; color: var(--text-main); }
+
+        /* --- LAYOUT --- */
+        .main-container { display: flex; flex: 1; position: relative; height: calc(100vh - 70px); }
+
+        /* --- SIDEBAR LEFT --- */
+        .sidebar-left {
+            width: 320px; background: var(--bg-dark); border-right: 1px solid var(--border);
+            padding: 24px; display: flex; flex-direction: column; gap: 30px; z-index: 900; overflow-y: auto;
+        }
+        .control-group h3 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+
+        .btn-toggle, .action-btn {
+            width: 100%; padding: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            color: var(--muted); border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+            transition: 0.2s; margin-bottom: 12px; font-family: inherit; font-size: 13px; font-weight: 500;
+        }
+        .btn-toggle:hover, .action-btn:hover { background: rgba(255,255,255,0.08); color: white; border-color: rgba(255,255,255,0.2); }
+        .btn-toggle.active { background: rgba(214, 255, 0, 0.1); border-color: var(--accent); color: var(--accent); }
+        
+        .action-btn.primary { 
+            background: linear-gradient(135deg, var(--purple) 0%, #7e22ce 100%); 
+            color: white; border: none; justify-content: center; font-weight: 600; 
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3); 
+        }
+
+        .slider-container { margin-bottom: 20px; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px; color: var(--muted); }
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+        /* --- MAP --- */
+        #map { flex: 1; background: #0b0c10; }
+
+        /* --- RIGHT SIDE PANEL (V1 Glassmorphism) --- */
+        .sidebar-right {
+            position: absolute; top: 20px; right: 20px; bottom: 20px; width: 380px;
+            background: var(--panel-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 28px;
+            transform: translateX(450px); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1100; display: flex; flex-direction: column;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+        }
+        .sidebar-right.open { transform: translateX(0); }
+
+        .panel-header {
+            padding: 24px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-title { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.5px; }
+        .close-btn { background: rgba(255,255,255,0.05); border: none; color: white; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .close-btn:hover { background: rgba(255,255,255,0.15); }
+
+        .panel-content { padding: 30px; flex: 1; overflow-y: auto; }
+
+        /* Detail Elements */
+        .bin-img-placeholder {
+            width: 100%; height: 200px; background: #000; border-radius: 20px; margin-bottom: 25px;
+            overflow: hidden; border: 1px solid var(--border);
+        }
+        .bin-img-placeholder img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+        
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .detail-label { color: var(--muted); font-size: 13px; }
+        .detail-val { font-weight: 600; color: white; font-size: 14px; }
+        
+        .progress-bg { height: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
+        .progress-fill { height: 100%; border-radius: 6px; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        .status-badge { padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+
+        /* Report Cards */
+        .report-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
+        .kpi-big { font-size: 26px; font-weight: 800; color: white; font-family: 'JetBrains Mono'; }
+        .kpi-sub { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+        .saved-tag { font-size: 12px; color: var(--success); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: rgba(33, 243, 155, 0.1); padding: 4px 10px; border-radius: 8px; margin-top: 8px;}
+
+        /* --- MARKERS (V1 Şık Glow Efekti) --- */
+        .custom-marker { 
+            border: 2px solid rgba(255,255,255,0.9); 
+            border-radius: 50%; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        .custom-marker:hover { transform: scale(1.6); z-index: 1000 !important; }
+        .marker-clean { background: var(--success); box-shadow: 0 0 12px var(--success); }
+        .marker-warn { background: var(--warning); box-shadow: 0 0 12px var(--warning); }
+        .marker-full { background: var(--danger); box-shadow: 0 0 20px var(--danger); animation: marker-pulse 1.8s infinite; }
+        .marker-depot { background: var(--purple); color: white; display: flex !important; justify-content: center; align-items: center; font-size: 14px; border: 2px solid white; box-shadow: 0 0 15px var(--purple); }
+
+        @keyframes marker-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7); } 70% { box-shadow: 0 0 0 12px rgba(255, 59, 59, 0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+
+        .loader { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); color: white; padding: 25px 40px; border-radius: 20px; border: 1px solid var(--border); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <i class="fa-solid fa-recycle"></i> IntelliWaste
+        </div>
+        <div class="top-stats">
+            <div class="stat-item"><span>System Status</span><strong style="color:var(--success)">ONLINE</strong></div>
+            <div class="stat-item"><span>Monitored</span><strong id="header-total">0</strong></div>
+            <div class="stat-item"><span>Local Time</span><strong id="clock">00:00</strong></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar-left">
+            <div class="control-group">
+                <h3>Monitoring</h3>
+                <div class="slider-container">
+                    <div class="slider-header"><span>Visibility Filter</span><span id="lbl-filter" style="color:var(--accent)">0%</span></div>
+                    <input type="range" id="slider-filter" min="0" max="100" value="0">
+                </div>
+                <button class="btn-toggle" id="btn-contam" onclick="toggleContam()">
+                    <i class="fa-solid fa-biohazard"></i> Only Contaminated
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Routing AI</h3>
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:20px; line-height:1.5;">
+                    OSRM engine calculates real-world road paths for optimized collection missions.
+                </p>
+                <div class="slider-container">
+                    <div class="slider-header"><span>Goal Threshold</span><span id="lbl-route" style="color:var(--purple)">70%</span></div>
+                    <input type="range" id="slider-route" min="0" max="100" value="70" style="accent-color:var(--purple)">
+                </div>
+                <button class="action-btn primary" onclick="generateSmartRoute()">
+                    <i class="fa-solid fa-compass"></i> Calculate Real Route
+                </button>
+                <button class="action-btn" onclick="clearRoute()">
+                    <i class="fa-solid fa-trash-can"></i> Reset View
+                </button>
+            </div>
+        </div>
+
+        <div id="map"></div>
+        <div id="loader" class="loader"><i class="fa-solid fa-spinner fa-spin" style="margin-right:12px; color:var(--accent)"></i> Syncing Road Data...</div>
+
+        <div class="sidebar-right" id="rightPanel">
+            <div class="panel-header">
+                <span class="panel-title" id="panelTitle">Unit Details</span>
+                <button class="close-btn" onclick="closePanel()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="panel-content" id="panelContent">
+                </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const CENTER = [41.080, 29.020];
+        const TRUCK_FUEL_PER_100KM = 35; 
+        const CO2_PER_LITER = 2.68;
+
+        // Clock
+        setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}), 1000);
+
+        const map = L.map('map', {zoomControl: false}).setView(CENTER, 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        const binLayer = L.layerGroup().addTo(map);
+        const routeLayer = L.layerGroup().addTo(map);
+
+        const bins = [];
+        const NUM_BINS = 85;
+
+        for(let i=0; i<NUM_BINS; i++){
+            bins.push({
+                id: `IW-${2400 + i}`,
+                lat: CENTER[0] + (Math.random()-0.5)*0.045,
+                lng: CENTER[1] + (Math.random()-0.5)*0.065,
+                fill: Math.floor(Math.random()*100),
+                battery: Math.floor(45 + Math.random()*55),
+                contaminated: Math.random() > 0.88,
+                lastColl: Math.floor(Math.random()*18) + "h ago"
+            });
+        }
+        document.getElementById('header-total').innerText = NUM_BINS;
+
+        function renderBins() {
+            binLayer.clearLayers();
+            const minFill = parseInt(document.getElementById('slider-filter').value);
+            const showContam = document.getElementById('btn-contam').classList.contains('active');
+
+            bins.forEach(bin => {
+                let isVisible = true;
+                if (bin.fill < minFill) isVisible = false;
+                if (showContam && !bin.contaminated) isVisible = false;
+
+                if(isVisible) {
+                    let css = 'marker-clean';
+                    if(bin.contaminated || bin.fill > 80) css = 'marker-full';
+                    else if(bin.fill > 50) css = 'marker-warn';
+
+                    L.marker([bin.lat, bin.lng], {
+                        icon: L.divIcon({ className: `custom-marker ${css}`, iconSize: [16,16] })
+                    }).on('click', () => openBinDetail(bin)).addTo(binLayer);
+                }
+            });
+        }
+
+        const rightPanel = document.getElementById('rightPanel');
+        const panelTitle = document.getElementById('panelTitle');
+        const panelContent = document.getElementById('panelContent');
+
+        function openBinDetail(bin) {
+            panelTitle.innerText = bin.id;
+            let color = bin.contaminated || bin.fill > 80 ? 'var(--danger)' : (bin.fill > 50 ? 'var(--warning)' : 'var(--success)');
+            let status = bin.contaminated ? 'CONTAMINATED' : (bin.fill > 80 ? 'CRITICAL' : 'OPTIMAL');
+
+            panelContent.innerHTML = `
+                <div class="bin-img-placeholder">
+                     <img src="https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&q=80&w=600">
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Current Status</span>
+                    <span class="status-badge" style="background:${color}20; color:${color}">${status}</span>
+                </div>
+                
+                <div style="margin-bottom:25px;">
+                    <div class="detail-row" style="margin-bottom:5px; border:none;">
+                        <span class="detail-label">Fill Level</span>
+                        <span class="detail-val" style="color:${color}">${bin.fill}%</span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width:${bin.fill}%; background:${color}"></div>
+                    </div>
+                </div>
+
+                <div class="detail-row"><span class="detail-label">Battery Level</span><span class="detail-val">${bin.battery}%</span></div>
+                <div class="detail-row"><span class="detail-label">Contamination</span><span class="detail-val" style="color:${bin.contaminated ? 'var(--danger)':'inherit'}">${bin.contaminated ? 'Alert: Mixed Waste' : 'None'}</span></div>
+                <div class="detail-row"><span class="detail-label">Location</span><span class="detail-val">District 4, St. 12</span></div>
+                
+                <button class="action-btn primary" style="margin-top:20px;">
+                    <i class="fa-solid fa-truck-pickup"></i> DISPATCH NOW
+                </button>
+            `;
+            rightPanel.classList.add('open');
+        }
+
+        async function generateSmartRoute() {
+            closePanel();
+            routeLayer.clearLayers();
+            document.getElementById('loader').style.display = 'block';
+
+            const threshold = parseInt(document.getElementById('slider-route').value);
+            const targets = bins.filter(b => b.fill >= threshold);
+
+            if(targets.length === 0) {
+                alert("No units found for current goal.");
+                document.getElementById('loader').style.display = 'none';
+                return;
+            }
+
+            const depot = { lat: CENTER[0] + 0.015, lng: CENTER[1] - 0.02 };
+            L.marker([depot.lat, depot.lng], {
+                icon: L.divIcon({ className: 'custom-marker marker-depot', iconSize:[32,32], html:'<i class="fa-solid fa-warehouse"></i>' })
+            }).addTo(routeLayer);
+
+            // Simple TSP Order
+            let unvisited = [...targets];
+            let ordered = [depot];
+            let cur = depot;
+            while(unvisited.length > 0) {
+                let nIdx = 0, mD = Infinity;
+                unvisited.forEach((u, i) => {
+                    let d = Math.sqrt(Math.pow(u.lat-cur.lat,2)+Math.pow(u.lng-cur.lng,2));
+                    if(d < mD) { mD = d; nIdx = i; }
+                });
+                cur = unvisited[nIdx];
+                ordered.push(cur);
+                unvisited.splice(nIdx, 1);
+            }
+            ordered.push(depot);
+
+            const coords = ordered.map(p => `${p.lng},${p.lat}`).join(';');
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                const data = await res.json();
+                if(data.code !== 'Ok') throw 'Error';
+
+                const distanceKm = data.routes[0].distance / 1000;
+                L.geoJSON(data.routes[0].geometry, {
+                    style: { color: 'var(--purple)', weight: 6, opacity: 0.8, dashArray: '12, 12' }
+                }).addTo(routeLayer);
+
+                // Savings Logic
+                const skipped = NUM_BINS - targets.length;
+                const baselineKm = distanceKm + (skipped * 0.7);
+                const finalBase = threshold === 0 ? distanceKm : baselineKm;
+                const savedDist = finalBase - distanceKm;
+
+                panelTitle.innerHTML = 'Intelligence Report';
+                panelContent.innerHTML = `
+                    <div class="report-card">
+                        <div class="kpi-sub">Mission Distance</div>
+                        <div class="kpi-big">${distanceKm.toFixed(1)} <span style="font-size:12px">KM</span></div>
+                        ${savedDist > 0 ? `<div class="saved-tag">-${savedDist.toFixed(1)} km saved</div>` : ''}
+                    </div>
+                    <div class="report-card">
+                        <div class="kpi-sub">Fuel Consumption</div>
+                        <div class="kpi-big">${(distanceKm*0.35).toFixed(1)} <span style="font-size:12px">L</span></div>
+                        ${savedDist > 0 ? `<div class="saved-tag">-${(savedDist*0.35).toFixed(1)} L saved</div>` : ''}
+                    </div>
+                    <div class="report-card">
+                        <div class="kpi-sub">CO2 Footprint</div>
+                        <div class="kpi-big" style="color:var(--success)">${(distanceKm*0.35*2.68).toFixed(1)} <span style="font-size:12px">KG</span></div>
+                        ${savedDist > 0 ? `<div class="saved-tag">-${(savedDist*0.35*2.68).toFixed(1)} kg saved</div>` : ''}
+                    </div>
+                    <div class="report-card">
+                        <div class="kpi-sub">Target Units</div>
+                        <div class="kpi-big">${targets.length} <span style="font-size:12px">STOPS</span></div>
+                    </div>
+                `;
+                rightPanel.classList.add('open');
+            } catch(e) { alert("API Error"); }
+            finally { document.getElementById('loader').style.display = 'none'; }
+        }
+
+        function closePanel() { rightPanel.classList.remove('open'); }
+        function clearRoute() { routeLayer.clearLayers(); closePanel(); map.flyTo(CENTER, 14); }
+        function toggleContam() { document.getElementById('btn-contam').classList.toggle('active'); renderBins(); }
+        
+        document.getElementById('slider-filter').addEventListener('input', (e) => {
+            document.getElementById('lbl-filter').innerText = e.target.value + '%';
+            renderBins();
+        });
+        document.getElementById('slider-route').addEventListener('input', (e) => {
+            document.getElementById('lbl-route').innerText = e.target.value + '%';
+        });
+
+        renderBins();
+    </script>
+</body>
+</html>

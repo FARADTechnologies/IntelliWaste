@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliWaste | City Command Center</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.85);
+            --border: rgba(148, 163, 184, 0.1);
+            --accent: #38bdf8; /* Cyan */
+            --danger: #ef4444; /* Red */
+            --warning: #eab308; /* Yellow */
+            --success: #22c55e; /* Green */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            height: 60px;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+        
+        .brand i { color: var(--success); font-size: 20px; }
+
+        .top-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .stat-item span { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-item strong { font-size: 16px; color: var(--accent); }
+
+        /* --- Main Layout --- */
+        .main-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+
+        /* --- Sidebar (Controls) --- */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 900;
+        }
+
+        .control-group h3 {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .btn-toggle {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .btn-toggle:hover { background: rgba(255,255,255,0.1); color: white; }
+        .btn-toggle.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* --- Map Area --- */
+        #map {
+            flex: 1;
+            height: 100%;
+            background: #000;
+        }
+
+        /* --- Detail Panel (Floating) --- */
+        .detail-panel {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            width: 320px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: translateX(400px); /* Hidden initially */
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 950;
+        }
+        
+        .detail-panel.open { transform: translateX(0); }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .bin-id { font-size: 18px; font-weight: 600; color: white; }
+        .close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; }
+
+        .live-feed {
+            width: 100%;
+            height: 180px;
+            background: #000;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin-bottom: 15px;
+        }
+        
+        .live-feed img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+        .live-tag {
+            position: absolute;
+            top: 8px; left: 8px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .live-tag::before { content:''; display:block; width:6px; height:6px; background:white; border-radius:50%; }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .progress-bg {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-fill { height: 100%; width: 0%; transition: width 1s ease, background-color 0.3s; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .status-ok { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.4); }
+        .status-warn { background: rgba(234, 179, 8, 0.2); color: var(--warning); border: 1px solid rgba(234, 179, 8, 0.4); }
+        .status-crit { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.4); }
+
+        /* --- Map Markers Custom Styles --- */
+        .custom-marker {
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        .marker-success { border-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .marker-warning { border-color: var(--warning); box-shadow: 0 0 8px var(--warning); }
+        .marker-danger { 
+            border-color: var(--danger); 
+            box-shadow: 0 0 15px var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* --- Legend --- */
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(5px);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 800;
+            pointer-events: none;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 12px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <i class="fa-solid fa-recycle"></i>
+            IntelliWaste <span style="color:var(--text-muted); font-weight:300; margin-left:8px;">Command Center</span>
+        </div>
+        <div class="top-stats">
+            <div class="stat-item">
+                <span>Active Bins</span>
+                <strong>1,248</strong>
+            </div>
+            <div class="stat-item">
+                <span>Avg Efficiency</span>
+                <strong style="color:var(--success)">94%</strong>
+            </div>
+            <div class="stat-item">
+                <span>Alerts</span>
+                <strong style="color:var(--danger)">12</strong>
+            </div>
+            <div class="stat-item">
+                <span>Date</span>
+                <strong id="clock">12:00</strong>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="control-group">
+                <h3>Views</h3>
+                <button class="btn-toggle active" id="btn-monitoring" onclick="toggleView('monitoring')">
+                    <i class="fa-solid fa-eye"></i> Live Monitoring
+                </button>
+                <button class="btn-toggle" id="btn-heatmap" onclick="toggleView('heatmap')">
+                    <i class="fa-solid fa-fire"></i> Density Heatmap
+                </button>
+            </div>
+
+            <div class="control-group">
+                <h3>Filters</h3>
+                <button class="btn-toggle" onclick="toggleFilter('contamination')">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Show Contamination
+                </button>
+                <button class="btn-toggle" onclick="toggleFilter('full')">
+                    <i class="fa-solid fa-trash-arrow-up"></i> Critical Level (>80%)
+                </button>
+            </div>
+
+            <div style="margin-top:auto; font-size:11px; color:var(--text-muted); line-height:1.5;">
+                <p>System Status: <strong>Online</strong></p>
+                <p>Latency: <strong>24ms</strong></p>
+                <p>Version: <strong>v3.0.1-beta</strong></p>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="detail-panel" id="detailPanel">
+            <div class="panel-header">
+                <div>
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Selected Unit</div>
+                    <div class="bin-id" id="panel-bin-id">BIN-4092</div>
+                </div>
+                <button class="close-btn" onclick="closePanel()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="live-feed">
+                <div class="live-tag">LIVE FEED</div>
+                <img id="cctv-img" src="https://images.unsplash.com/photo-1530587191325-3f425152c1a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Bin View">
+            </div>
+
+            <div class="metric-row">
+                <span>Fill Level</span>
+                <span id="panel-fill-val">45%</span>
+            </div>
+            <div class="progress-bg">
+                <div class="progress-fill" id="panel-fill-bar" style="width: 45%; background: var(--success);"></div>
+            </div>
+
+            <div class="metric-row">
+                <span>Battery</span>
+                <span>88%</span>
+            </div>
+            <div class="metric-row">
+                <span>Last Collection</span>
+                <span>4h ago</span>
+            </div>
+            <div class="metric-row">
+                <span>Contamination</span>
+                <span id="panel-contam-val">None</span>
+            </div>
+
+            <div style="margin-top:20px;">
+                <div id="panel-status-badge" class="status-badge status-ok">
+                    OPTIMAL STATUS
+                </div>
+            </div>
+            
+            <button style="margin-top:15px; width:100%; padding:10px; background:var(--accent); border:none; border-radius:6px; color:#000; font-weight:700; cursor:pointer;">
+                Dispatch Collector
+            </button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:var(--success)"></div> Normal (< 50%)</div>
+            <div class="legend-item"><div class="dot" style="background:var(--warning)"></div> Warning (50-80%)</div>
+            <div class="legend-item"><div class="dot" style="background:var(--danger); box-shadow:0 0 5px var(--danger);"></div> Critical / Contaminated</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    
+    <script>
+        // 1. Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // 2. Map Initialization (Generic City Center - e.g., mix of layout)
+        // Using coordinates for a generic nice looking layout (approx Istanbul Besiktas/Sisli area for density)
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([41.042, 29.006], 15);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Dark Matter Tiles (Professional look)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map);
+
+        // 3. Mock Data Generation
+        const bins = [];
+        const centerLat = 41.042;
+        const centerLng = 29.006;
+        
+        // Generate 60 random bins around the center
+        for(let i=0; i<60; i++) {
+            const lat = centerLat + (Math.random() - 0.5) * 0.015;
+            const lng = centerLng + (Math.random() - 0.5) * 0.020;
+            const fillLevel = Math.floor(Math.random() * 100);
+            const isContaminated = Math.random() > 0.85; // 15% chance
+            
+            bins.push({
+                id: `BIN-${1000 + i}`,
+                lat: lat,
+                lng: lng,
+                fill: fillLevel,
+                contaminated: isContaminated,
+                marker: null // will store Leaflet marker
+            });
+        }
+
+        // 4. Icons
+        const createIcon = (colorClass) => {
+            return L.divIcon({
+                className: `custom-marker ${colorClass}`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+        };
+
+        const layerGroup = L.layerGroup().addTo(map);
+        let heatLayer = null;
+
+        // 5. Render Markers
+        function renderMarkers() {
+            layerGroup.clearLayers();
+            if(heatLayer) map.removeLayer(heatLayer);
+
+            bins.forEach(bin => {
+                let colorClass = 'marker-success';
+                if (bin.contaminated || bin.fill > 85) colorClass = 'marker-danger';
+                else if (bin.fill > 50) colorClass = 'marker-warning';
+
+                const marker = L.marker([bin.lat, bin.lng], {
+                    icon: createIcon(colorClass)
+                }).addTo(layerGroup);
+
+                // Interaction
+                marker.on('click', () => {
+                    openPanel(bin);
+                    // Reset styling of other markers (optional)
+                    // Highlight this one?
+                });
+
+                bin.marker = marker;
+            });
+        }
+
+        // 6. Heatmap Logic
+        function renderHeatmap() {
+            layerGroup.clearLayers();
+            const points = bins.map(b => {
+                // Intensity based on fill level (0.0 to 1.0)
+                return [b.lat, b.lng, b.fill / 100]; 
+            });
+
+            heatLayer = L.heatLayer(points, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'}
+            }).addTo(map);
+        }
+
+        // Initial Render
+        renderMarkers();
+
+        // 7. Panel Logic
+        const panel = document.getElementById('detailPanel');
+        const fillBar = document.getElementById('panel-fill-bar');
+        const statusBadge = document.getElementById('panel-status-badge');
+        
+        function openPanel(bin) {
+            document.getElementById('panel-bin-id').innerText = bin.id;
+            document.getElementById('panel-fill-val').innerText = bin.fill + '%';
+            
+            // Randomize image to simulate different bins
+            const randomImgId = Math.floor(Math.random()*10); 
+            document.getElementById('cctv-img').src = `https://source.unsplash.com/random/600x400/?trash,bin,garbage&sig=${bin.id}`;
+            // Fallback for unsplash deprecation or load issues, using a reliable placeholder related to city/street
+            document.getElementById('cctv-img').src = "https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?auto=format&fit=crop&q=80&w=600"; 
+
+            // Update Bars
+            fillBar.style.width = bin.fill + '%';
+            
+            let statusText = "OPTIMAL";
+            let statusClass = "status-ok";
+            let barColor = "var(--success)";
+
+            if(bin.contaminated) {
+                statusText = "CONTAMINATION DETECTED";
+                statusClass = "status-crit";
+                barColor = "var(--danger)";
+                document.getElementById('panel-contam-val').innerText = "Plastic in Organic";
+                document.getElementById('panel-contam-val').style.color = "var(--danger)";
+            } else {
+                document.getElementById('panel-contam-val').innerText = "None";
+                document.getElementById('panel-contam-val').style.color = "var(--text-muted)";
+                
+                if(bin.fill > 85) {
+                    statusText = "OVERFLOW RISK";
+                    statusClass = "status-crit";
+                    barColor = "var(--danger)";
+                } else if (bin.fill > 50) {
+                    statusText = "COLLECTION SOON";
+                    statusClass = "status-warn";
+                    barColor = "var(--warning)";
+                }
+            }
+
+            fillBar.style.background = barColor;
+            statusBadge.className = `status-badge ${statusClass}`;
+            statusBadge.innerText = statusText;
+
+            panel.classList.add('open');
+        }
+
+        function closePanel() {
+            panel.classList.remove('open');
+        }
+
+        // 8. Toggles
+        function toggleView(mode) {
+            document.getElementById('btn-monitoring').classList.remove('active');
+            document.getElementById('btn-heatmap').classList.remove('active');
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            if(mode === 'monitoring') {
+                renderMarkers();
+            } else {
+                renderHeatmap();
+            }
+            closePanel();
+        }
+
+        // Simulate Live Data Updates
+        setInterval(() => {
+            // Pick a random bin and change its fill level slightly
+            const randomBin = bins[Math.floor(Math.random() * bins.length)];
+            const change = Math.floor(Math.random() * 10) - 3; // -3 to +7
+            let newFill = randomBin.fill + change;
+            if(newFill > 100) newFill = 100;
+            if(newFill < 0) newFill = 0;
+            
+            randomBin.fill = newFill;
+
+            // If we are in monitoring mode, update marker color if threshold crossed
+            if(!heatLayer && randomBin.marker) {
+                let colorClass = 'marker-success';
+                if (randomBin.contaminated || randomBin.fill > 85) colorClass = 'marker-danger';
+                else if (randomBin.fill > 50) colorClass = 'marker-warning';
+                
+                // Update icon class
+               const newIcon = createIcon(colorClass);
+               randomBin.marker.setIcon(newIcon);
+            }
+        }, 2000);
+
+    </script>
+</body>
+</html>
